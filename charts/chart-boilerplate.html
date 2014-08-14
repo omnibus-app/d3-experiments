@@ -1,6 +1,5 @@
- <html>
+<html>
 <head>
-  <meta charset='utf-8'>
   <title></title>
   <style>
 
@@ -44,7 +43,7 @@
     }
 
     .chart {
-      flex: 6;
+      flex: 3;
       min-height: 4rem;
     }
 
@@ -82,6 +81,7 @@
     .axis text {
       font: 10px sans-serif;
     }
+
   </style>
 
 </head>
@@ -92,9 +92,7 @@
       <p class="tagline">Visualize it.</p>
     </div>
     <div class="wrapper">
-      <div class="chart" id="chart">
-      <svg id="charts" width="100%" height="100%" viewBox="0 0 640 480"></svg>
-      </div>
+      <div class="chart" id="chart"></div>
       <div class="sidebar" id="sidebar">
         <h2>Metadata</h2>
       </div>
@@ -104,11 +102,9 @@
   <script src="../bower_components/jquery/dist/jquery.js"></script>
   <script src="../bower_components/underscore/underscore.js"></script>
   <script src="../bower_components/d3/d3.js"></script>
-  <script src="http://d3js.org/d3.v3.min.js"></script>
 
   <!-- makes global billDetails var -->
   <script src="../data/bill-details.js"></script>
-  <!-- // <script src="./sp500.csv"></script> -->
 
   <!-- makes global billSubjects var -->
   <script src="../data/bill-subjects.js"></script>
@@ -125,10 +121,10 @@
   <script>
     // not scoping this stuff in an IIFE for easier development w browser console.
 
+    // code here.
     var chart;
 
     function init () {
-
 
       var margin = {top: 30, right: 10, bottom: 10, left: 10},
       width = 960 - margin.left - margin.right,
@@ -196,6 +192,7 @@
     };
     // call init on DOM ready
     $( init );
+
 
   </script>
 </body>
