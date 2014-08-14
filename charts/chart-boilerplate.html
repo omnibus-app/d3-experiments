@@ -70,6 +70,18 @@
       fill-opacity: .125;
       shape-rendering: crispEdges;
     }
+
+    .bar.positive {
+      fill: red;
+    }
+
+    .bar.negative {
+      fill: blue;
+    }
+
+    .axis text {
+      font: 10px sans-serif;
+    }
   </style>
 
 </head>
@@ -117,143 +129,70 @@
 
     function init () {
 
-    var margin = {top: 10, right: 10, bottom: 100, left: 40},
-        margin2 = {top: 430, right: 10, bottom: 20, left: 40},
-        width = 960 - margin.left - margin.right,
-        height = 500 - margin.top - margin.bottom,
-        height2 = 500 - margin2.top - margin2.bottom;
 
-    var parseDate = d3.time.format("%b %Y").parse;
+      var margin = {top: 30, right: 10, bottom: 10, left: 10},
+      width = 960 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
 
-    var x = d3.time.scale().range([0, width]),
-        x2 = d3.time.scale().range([0, width]),
-        y = d3.scale.linear().range([height, 0]),
-        y2 = d3.scale.linear().range([height2, 0]);
+      var x = d3.scale.linear()
+          .range([0, width])
 
-    var xAxis = d3.svg.axis().scale(x).orient("bottom"),
-        xAxis2 = d3.svg.axis().scale(x2).orient("bottom"),
-        yAxis = d3.svg.axis().scale(y).orient("left");
+      var y = d3.scale.ordinal()
+          .rangeRoundBands([0, height], .2);
 
-    var brush = d3.svg.brush()
-        .x(x2)
-        .on("brush", brushed);
+      var xAxis = d3.svg.axis()
+          .scale(x)
+          .orient("top");
 
-    var area = d3.svg.area()
-        .interpolate("monotone")
-        .x(function(d) { return x(d.date); })
-        .y0(height)
-        .y1(function(d) { return y(d.information); });
+      var svg = d3.select("#chart").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    var area2 = d3.svg.area()
-        .interpolate("monotone")
-        .x(function(d) { return x2(d.date); })
-        .y0(height2)
-        .y1(function(d) { return y2(d.information); });
+      var data;
+      var xData;
 
-    var svg = d3.select("#charts").append("svg")
-        .attr("width", $( "#charts" ).width())
-        .attr("height", $( "#charts" ).width());
+      d3.json("../data/votes_month.json", function(error, json) {
+        data = json.results.votes;
 
-    svg.append("defs").append("clipPath")
-        .attr("id", "clip")
-      .append("rect")
-        .attr("width", width)
-        .attr("height", height);
+        xData = data.reduce( function ( acc, vote ) {
+          return acc.concat([
+            {
+              yes: vote.democratic.yes * -1,
+              vote: vote
+            }, {
+              yes: vote.republican.yes * 1,
+              vote: vote
+            }
+          ]);
+        }, [] );
 
-    var focus = svg.append("g")
-        .attr("class", "focus")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        x.domain(d3.extent(xData, function(d) { return d.yes; })).nice();
+        y.domain(data.map(function(d) { return d.description; }));
 
-    var context = svg.append("g")
-        .attr("class", "context")
-        .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+        svg.selectAll(".bar")
+            .data(xData)
+          .enter().append("rect")
+            .attr("class", function(d) { return d.yes < 0 ? "bar negative" : "bar positive"; })
+            .attr("x", function(d) { return x(Math.min(0, d.yes)); })
+            .attr("y", function(d) { return y(d.vote.description); })
+            .attr("width", function(d) { return Math.abs(x(d.yes) - x(0)); })
+            .attr("height", y.rangeBand());
 
+        svg.append("g")
+            .attr("class", "x axis")
+            .call(xAxis);
 
+        svg.append("g")
+            .attr("class", "y axis")
+          .append("line")
+            .attr("x1", x(0))
+            .attr("x2", x(0))
+            .attr("y2", height);
 
+      });
 
-    // this currently only deals with one thing,
-    // alter whatever you need to alter here
-    var squashData = function(mainData){
-      var result = [];
-      if (mainData['results'][0]['actions']){
-        var search = mainData['results'][0]['actions'];
-        for (var i = 0; i < search.length; i++) {
-          result.push({});
-          result[i].date = Date.parse(new Date(search[i].datetime));
-          result[i].information = i;
-        }
-      }
-      return result;
-    };
-    // choose the data source
-    var data = squashData(billDetails);
-
-    x.domain(d3.extent(data.map(function(d) { return d.date; })));
-    y.domain([0, d3.max(data.map(function(d) { return d.information; }))]);
-    x2.domain(x.domain());
-    y2.domain(y.domain());
-
-    focus.append("path")
-        .datum(data)
-        .attr("class", "area")
-        .attr("d", area);
-
-    focus.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + height + ")")
-        .call(xAxis);
-
-    focus.append("g")
-        .attr("class", "y axis")
-        .call(yAxis);
-
-    context.append("path")
-        .datum(data)
-        .attr("class", "area")
-        .attr("d", area2);
-
-    context.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + height2 + ")")
-        .call(xAxis2);
-
-    context.append("g")
-        .attr("class", "x brush")
-        .call(brush)
-      .selectAll("rect")
-        .attr("y", -6)
-        .attr("height", height2 + 7);
-
-
-    function brushed() {
-      x.domain(brush.empty() ? x2.domain() : brush.extent());
-      focus.select(".area").attr("d", area);
-      focus.select(".x.axis").call(xAxis);
-    }
-
-    function type(d) {
-      d.date = parseDate(d.date);
-      d.information = +d.information;
-      return d;
-    }
-    // code here.
-
-
-    /*
-
-      chart = d3
-        .select( "#chart" )
-        .append( "svg" )
-        .attr( "width", $( "#chart" ).width() )
-        .attr( "height", 300 );
-
-      chart
-        .append( "text" )
-        .attr( "x", $( "#chart" ).width() / 2 )
-        .attr( "y", 135 )
-        .attr( "text-anchor", "middle" )
-        .text( "I'm an SVG text element" );
-*/
     };
     // call init on DOM ready
     $( init );
