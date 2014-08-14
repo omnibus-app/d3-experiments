@@ -52,6 +52,36 @@
         flex-direction: column;
       }
     }
+    .area {
+      fill: steelblue;
+      clip-path: url(#clip);
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
+    .brush .extent {
+      stroke: #fff;
+      fill-opacity: .125;
+      shape-rendering: crispEdges;
+    }
+
+    .bar.positive {
+      fill: red;
+    }
+
+    .bar.negative {
+      fill: blue;
+    }
+
+    .axis text {
+      font: 10px sans-serif;
+    }
+
   </style>
 
 </head>
@@ -96,20 +126,70 @@
 
     function init () {
 
-      chart = d3
-        .select( "#chart" )
-        .append( "svg" )
-        .attr( "width", $( "#chart" ).width() )
-        .attr( "height", 300 );
+      var margin = {top: 30, right: 10, bottom: 10, left: 10},
+      width = 960 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
 
-      chart
-        .append( "text" )
-        .attr( "x", $( "#chart" ).width() / 2 )
-        .attr( "y", 135 )
-        .attr( "text-anchor", "middle" )
-        .text( "I'm an SVG text element" );
-    }
+      var x = d3.scale.linear()
+          .range([0, width])
 
+      var y = d3.scale.ordinal()
+          .rangeRoundBands([0, height], .2);
+
+      var xAxis = d3.svg.axis()
+          .scale(x)
+          .orient("top");
+
+      var svg = d3.select("#chart").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      var data;
+      var xData;
+
+      d3.json("../data/votes_month.json", function(error, json) {
+        data = json.results.votes;
+
+        xData = data.reduce( function ( acc, vote ) {
+          return acc.concat([
+            {
+              yes: vote.democratic.yes * -1,
+              vote: vote
+            }, {
+              yes: vote.republican.yes * 1,
+              vote: vote
+            }
+          ]);
+        }, [] );
+
+        x.domain(d3.extent(xData, function(d) { return d.yes; })).nice();
+        y.domain(data.map(function(d) { return d.description; }));
+
+        svg.selectAll(".bar")
+            .data(xData)
+          .enter().append("rect")
+            .attr("class", function(d) { return d.yes < 0 ? "bar negative" : "bar positive"; })
+            .attr("x", function(d) { return x(Math.min(0, d.yes)); })
+            .attr("y", function(d) { return y(d.vote.description); })
+            .attr("width", function(d) { return Math.abs(x(d.yes) - x(0)); })
+            .attr("height", y.rangeBand());
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .call(xAxis);
+
+        svg.append("g")
+            .attr("class", "y axis")
+          .append("line")
+            .attr("x1", x(0))
+            .attr("x2", x(0))
+            .attr("y2", height);
+
+      });
+
+    };
     // call init on DOM ready
     $( init );
 
