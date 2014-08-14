@@ -1,5 +1,6 @@
-<html>
+ <html>
 <head>
+  <meta charset="utf-8">
   <title></title>
   <style>
 
@@ -43,8 +44,9 @@
     }
 
     .chart {
-      flex: 3;
+      flex: 6;
       min-height: 4rem;
+      overflow: scroll;
     }
 
     @media (max-width: 48em) {
@@ -52,6 +54,25 @@
         flex-direction: column;
       }
     }
+    .bar.positive {
+      fill: steelblue;
+    }
+
+    .bar.negative {
+      fill: brown;
+    }
+
+    .axis text {
+      font: 10px sans-serif;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+
   </style>
 
 </head>
@@ -62,7 +83,8 @@
       <p class="tagline">Visualize it.</p>
     </div>
     <div class="wrapper">
-      <div class="chart" id="chart"></div>
+      <div class="chart" id="chart">
+      </div>
       <div class="sidebar" id="sidebar">
         <h2>Metadata</h2>
       </div>
@@ -72,9 +94,13 @@
   <script src="../bower_components/jquery/dist/jquery.js"></script>
   <script src="../bower_components/underscore/underscore.js"></script>
   <script src="../bower_components/d3/d3.js"></script>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="../bower_components/d3-tip/index.js"></script>
 
   <!-- makes global billDetails var -->
   <script src="../data/bill-details.js"></script>
+
+  <script src="../data/votes_month.json"></script>
 
   <!-- makes global billSubjects var -->
   <script src="../data/bill-subjects.js"></script>
@@ -91,10 +117,102 @@
   <script>
     // not scoping this stuff in an IIFE for easier development w browser console.
 
-    // code here.
     var chart;
 
     function init () {
+
+    var tip = d3.tip().attr('class', 'd3-tip').offset([-10, 0]).html (function(d) {return '<span>' + d.description + '</span>';});
+
+    var parseDate = d3.time.format("%Y-%m-%dT%H:%M:%SZ").parse;
+
+    var parseDate2 = d3.time.format("%Y-%m-%d").parse;
+
+    var margin = {top: 30, right: 10, bottom: 10, left: 10},
+        width = $("#chart").width(),
+        height = 500 - margin.top - margin.bottom;
+
+    var x = d3.scale.linear()
+        .range([0, width])
+
+    var y = d3.scale.ordinal()
+        .rangeRoundBands([0, height], .2);
+
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("top");
+
+    var svg = d3.select("#chart").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+
+    d3.json("../data/votes_month.json", function(error, data) {
+      data = data.results.votes;
+      //republican votes need to be converted to negative
+      // data = _.map(data, function(d) {
+      //   d.republican.yes = -d.republican.yes;
+      // })
+      
+      x.domain(d3.extent(data, function(d)
+        {
+        return d3.max(d.democratic.yes) - d3.max(d.republican.yes); }));
+      y.domain(data.map(function(d) {
+        return d.description; }));
+      
+
+      var tip = d3.tip().attr('class', 'd3-tip').offset([-10, 0]).html (function(data) {
+            return data;});
+
+
+      svg.selectAll(".bar")
+          .data(data)
+        .enter().append("rect")
+          .attr("class", function(d) {
+            return d.value < 0 ? "bar negative" : "bar positive"; })
+          .attr("x", function(d) { return x(Math.min(0, d.democratic.yes)); })
+          // .attr("x", function(d) { console.log(-d.republican.yes)
+          //  return x(Math.min(0,-d.republican.yes)); })
+          .attr("y", function(d) { return y(d.description); })
+          .attr("width", function(d) { return Math.abs(x(d.democratic.yes) - x(0)); })
+          .attr("height", y.rangeBand());
+
+      svg.call(tip)
+      svg.append("g")
+          .attr("class", "x axis")
+          .call(xAxis);
+
+      svg.append("g")
+          .attr("class", "y axis")
+        .append("line")
+          .attr("x1", x(0))
+          .attr("x2", x(0))
+          .attr("y2", height)
+          .on('mouseover', tip.show)
+          .on('mouseout', tip.hide);
+
+    });
+
+    function type(d) {
+      d.value = +d.value;
+      return d;
+    }
+
+    // code here.
+
+    /*
+    return data.reduce( function( acc, item) {
+      return acc.concat( item.results)
+    }, [])
+
+    data = data.reduce( function( acc, item) {
+          if (acc){
+            return acc.concat( item.results)
+          }
+      }, [])
+   
 
       chart = d3
         .select( "#chart" )
@@ -108,8 +226,8 @@
         .attr( "y", 135 )
         .attr( "text-anchor", "middle" )
         .text( "I'm an SVG text element" );
-    }
-
+*/
+    };
     // call init on DOM ready
     $( init );
 
